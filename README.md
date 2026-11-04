@@ -9,6 +9,8 @@
 |---|---|
 | 서비스 모델 (Head-only 3ep) Best Validation Accuracy | **0.7669** (Test 1회 0.7188) |
 | 선택 실험 Full Fine-tuning Best Validation Accuracy | **0.9699** (Test 1회 0.9531) |
+| 추가 실험: 라벨 스무딩 + 확인 필요 보류 | Test 보류 **14.1%**, 그대로 나간 오답 **0건** ([부록 09](reports/09_추가성능실험_보고서.md)) |
+| 추가 실험: 증강·해상도 384·TTA·seed 반복 | Full FT 흔들림 ±1.1%p 를 넘는 정확도 개선 없음 (TTA 는 재현 실패로 철회) |
 | 동기 MISS / 동기 HIT / 비동기 접수 / 비동기 완료 (중앙값) | 20.6 / 2.1 / 8.5 / 116.7 ms |
 | 실환경 통합 테스트 | 18 / 18 PASS (모의 테스트 01: 1 passed, 02: 4 passed) |
 
@@ -91,6 +93,14 @@ python -m pip install opencv-python-headless
 python reports/tools/hsv_lesion_analysis.py
 python reports/tools/gradcam_analysis.py --model artifacts/beans_resnet18_full --name B_full_e3
 ```
+추가 성능 실험 (부록 09, GPU 권장). 원본 `training/finetune.py` 는 그대로 두고 복사본을 쓴다.
+```bash
+bash reports/tools/run_extra_experiments.sh   # 1차: 증강(D1·D2) · 확인 필요 보류 · CNN+HSV 융합 (scikit-learn 자동 설치)
+bash reports/tools/run_boost_round2.sh        # 2차: 재실행·증강+10ep·해상도 384·라벨 스무딩·seed 반복·TTA·모델 비교표
+bash reports/tools/run_boost_round3.sh        # 3차: 증강 seed 반복 + TTA 재현 확인 · 라벨 스무딩 + 보류
+```
+Full FT 는 GPU 비결정성 때문에 같은 seed 로도 Val 이 1~3장 다르게 나올 수 있다.
+
 `test_api.py`(루트)는 01 단계 전용이며 02 구조에서는 `tests/test_api.py` 를 사용한다.
 
 ## 7. 결과물 위치
@@ -98,14 +108,17 @@ python reports/tools/gradcam_analysis.py --model artifacts/beans_resnet18_full -
 | 경로 | 내용 |
 |---|---|
 | `reports/01_FineTuning_결과보고서.md` ~ `reports/08_최종기술보고서.md` | 산출물 8종 |
+| `reports/09_추가성능실험_보고서.md` | 부록: 추가 성능 실험 1~3차 (용어 풀이 포함) |
+| `presentation/` | 발표 화면용 README, 5분 대본(예상 질문 포함), 작업 정리·코드 리뷰 |
 | `reports/data/` | 원본 측정 (timings.csv, test_eval_*.md, test_pred_*.csv, hsv_*, gradcam_*, 학습 로그, setup_and_test_log.md) |
 | `reports/evidence/` | 실행 캡처 |
 | `reports/figures/` | 그래프(charts), 다이어그램(diagrams), HSV·Grad-CAM 그림 |
-| `reports/tools/` | 보조 스크립트 (제공 코드 아님): check_dataset, measure_timings, evaluate_test, hsv_lesion_analysis, gradcam_analysis |
+| `reports/tools/` | 보조 스크립트 (제공 코드 아님): check_dataset, measure_timings, evaluate_test, hsv_lesion_analysis, gradcam_analysis, predict_split, review_flag_analysis, fusion_analysis, tta_eval, model_benchmark, run_*.sh |
+| `training/finetune_aug.py`, `training/finetune_plus.py` | 추가 실험용 학습 코드 (원본 `finetune.py` 복사본 + 옵션. 옵션 없으면 원본과 같은 동작) |
 | `artifacts/beans_resnet18/training_report.json` | 학습 기록 (저장소 미포함, 재생성) |
 
 ## 8. 제출 및 보안
 - `.env`, 비밀번호, 토큰은 저장소에 올리지 않는다 (`.gitignore`).
 - `dataset/`, `artifacts/*`, `media/jobs/*` 는 저장소 제외. 확보·재생성 절차는 2·4장.
 - 정지: `docker compose stop` (데이터 보존). `docker compose down -v` 는 DB·Redis 데이터를 지우므로 사용하지 않는다.
-- 제공 코드(01·02)는 수정하지 않았다. 추가한 파일은 `reports/` 아래뿐이다.
+- 제공 코드(01·02)는 수정하지 않았다. 추가한 파일은 `reports/`, `presentation/` 아래와 실험용 복사본 `training/finetune_aug.py`·`finetune_plus.py` 뿐이다.
